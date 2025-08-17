@@ -1,0 +1,66 @@
+import pandas as pd
+import dash
+from dash import dcc, html
+import plotly.express as px
+
+# ----------------------------
+# Sample dataset (replace with your actual table)
+# ----------------------------
+data = {
+    "User": ["johnp","johnp","johnp","ellend","ellend","davidg","davidg"],
+    "Transaction#": [1,2,3,4,1,1,2],
+    "Value": [120, 250, 4131, 180, 4895, 95, 110],
+    "Address": ["Orchid Lane","In-store","P.O. Box 1049",
+                "P.O. Box 1322","P.O. Box 5401",
+                "Maple Street","Maple Street"]
+}
+df = pd.DataFrame(data)
+
+# ----------------------------
+# KPI Calculations
+# ----------------------------
+total_transactions = len(df)
+total_value = df["Value"].sum()
+avg_value = df["Value"].mean()
+high_risk = df[df["Value"] > (df["Value"].mean()*3)]
+high_risk_pct = round((len(high_risk)/total_transactions)*100,2)
+
+# ----------------------------
+# Charts
+# ----------------------------
+fig_line = px.line(df, x="Transaction#", y="Value", color="User",
+                   markers=True, title="Transaction Trends per User")
+
+fig_bar = px.bar(df.nlargest(5, "Value"), x="User", y="Value",
+                 color="User", text="Value",
+                 title="Top 5 Highest Transactions")
+
+# ----------------------------
+# Dashboard Layout
+# ----------------------------
+app = dash.Dash(__name__)
+
+app.layout = html.Div(style={"font-family":"Arial"}, children=[
+    html.H1("💳 Credit Card Fraud Detection Dashboard", style={"textAlign":"center"}),
+
+    # KPIs
+    html.Div(style={"display":"flex","justifyContent":"space-around","margin":"20px"}, children=[
+        html.Div(f"Total Transactions: {total_transactions}", style={"fontSize":"18px","fontWeight":"bold"}),
+        html.Div(f"Total Value: ${total_value}", style={"fontSize":"18px","fontWeight":"bold"}),
+        html.Div(f"Average Value: ${round(avg_value,2)}", style={"fontSize":"18px","fontWeight":"bold"}),
+        html.Div(f"High-Risk %: {high_risk_pct}%", style={"fontSize":"18px","fontWeight":"bold","color":"red"})
+    ]),
+
+    # Graphs
+    html.Div(style={"display":"flex","gap":"40px"}, children=[
+        html.Div(dcc.Graph(figure=fig_line), style={"flex":"1"}),
+        html.Div(dcc.Graph(figure=fig_bar), style={"flex":"1"})
+    ]),
+
+    # Suspicious Transactions Table
+    html.H2("⚠️ Flagged Anomalies", style={"marginTop":"30px"}),
+    dcc.Markdown(high_risk.to_markdown(index=False))
+])
+
+if __name__ == '__main__':
+    app.run(debug=True)
